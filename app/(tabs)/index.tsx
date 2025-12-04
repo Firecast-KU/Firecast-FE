@@ -1,98 +1,92 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { View, Text, ScrollView } from 'react-native';
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView className="flex-1 bg-gray-100">
+      {/* Header */}
+      <View className="bg-gradient-to-r from-blue-500 to-purple-600 p-8">
+        <Text className="text-white text-4xl font-bold text-center">
+          NativeWind Test
+        </Text>
+        <Text className="text-white/80 text-center mt-2">
+          Tailwind CSS in React Native!
+        </Text>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Cards */}
+      <View className="p-4 gap-4">
+        {/* Card 1 */}
+        <View className="bg-white rounded-2xl p-6 shadow-lg">
+          <Text className="text-2xl font-bold text-gray-800 mb-2">
+            Colors & Typography
+          </Text>
+          <Text className="text-gray-600 text-base">
+            This is regular text
+          </Text>
+          <Text className="text-blue-500 font-semibold mt-2">
+            This is blue and semibold
+          </Text>
+          <Text className="text-red-500 italic">
+            This is red and italic
+          </Text>
+        </View>
+
+        {/* Card 2 */}
+        <View className="bg-gradient-to-br from-pink-400 to-yellow-400 rounded-2xl p-6">
+          <Text className="text-white text-xl font-bold">
+            Gradients Work!
+          </Text>
+          <Text className="text-white/90 mt-2">
+            Background gradients are supported
+          </Text>
+        </View>
+
+        {/* Card 3 - Flex Layout */}
+        <View className="bg-white rounded-2xl p-6 shadow-lg">
+          <Text className="text-xl font-bold text-gray-800 mb-4">
+            Flexbox Layout
+          </Text>
+          <View className="flex-row gap-2">
+            <View className="flex-1 bg-blue-500 p-4 rounded-lg">
+              <Text className="text-white text-center font-semibold">Box 1</Text>
+            </View>
+            <View className="flex-1 bg-green-500 p-4 rounded-lg">
+              <Text className="text-white text-center font-semibold">Box 2</Text>
+            </View>
+            <View className="flex-1 bg-red-500 p-4 rounded-lg">
+              <Text className="text-white text-center font-semibold">Box 3</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Card 4 - Spacing & Sizing */}
+        <View className="bg-white rounded-2xl p-6 shadow-lg">
+          <Text className="text-xl font-bold text-gray-800 mb-4">
+            Spacing & Sizing
+          </Text>
+          <View className="space-y-3">
+            <View className="h-12 bg-purple-500 rounded-lg" />
+            <View className="h-16 bg-indigo-500 rounded-lg" />
+            <View className="h-20 bg-blue-500 rounded-lg" />
+          </View>
+        </View>
+
+        {/* Card 5 - Borders */}
+        <View className="bg-white rounded-2xl p-6 shadow-lg mb-8">
+          <Text className="text-xl font-bold text-gray-800 mb-4">
+            Borders
+          </Text>
+          <View className="border-2 border-blue-500 rounded-lg p-4 mb-3">
+            <Text className="text-gray-700">Border blue-500</Text>
+          </View>
+          <View className="border-4 border-red-500 rounded-xl p-4 mb-3">
+            <Text className="text-gray-700">Border red-500 (thick)</Text>
+          </View>
+          <View className="border border-dashed border-green-500 rounded-lg p-4">
+            <Text className="text-gray-700">Dashed border green-500</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
