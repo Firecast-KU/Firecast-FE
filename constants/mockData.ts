@@ -9,22 +9,25 @@ export interface FireMarker {
   longitude: number;
   risk: RiskLevel;
   color: string;
+  probability: number; // 산불 발생 확률 (%)
+  temperature?: number; // 온도 (°C)
+  humidity?: number; // 습도 (%)
 }
 
 // 위험도별 색상 정의
 export const RISK_COLORS = {
-  high: '#FF3B30',    // 빨강 - 위험
-  medium: '#FF9500',  // 주황 - 주의
-  low: '#FFCC00',     // 노랑 - 낮음
-  safe: '#34C759',    // 초록 - 안전
+  high: '#ef4444',    // 빨강 - 위험
+  medium: '#f97316',  // 주황 - 주의
+  low: '#eab308',     // 노랑 - 낮음
+  safe: '#22c55e',    // 초록 - 안전
 } as const;
 
 // 위험도별 라벨
 export const RISK_LABELS = {
-  high: '⚠️ 위험',
-  medium: '⚡ 주의',
-  low: '📊 낮음',
-  safe: '✅ 안전',
+  high: '위험',
+  medium: '주의',
+  low: '낮음',
+  safe: '안전',
 } as const;
 
 // 임시 마커 데이터 (서울/경기/강원)
@@ -37,6 +40,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 126.9516,
     risk: 'high',
     color: RISK_COLORS.high,
+    probability: 78,
+    temperature: 28,
+    humidity: 35,
   },
   {
     id: 2,
@@ -45,6 +51,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 127.0158,
     risk: 'safe',
     color: RISK_COLORS.safe,
+    probability: 12,
+    temperature: 24,
+    humidity: 65,
   },
   {
     id: 3,
@@ -53,6 +62,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 126.9882,
     risk: 'low',
     color: RISK_COLORS.low,
+    probability: 25,
+    temperature: 26,
+    humidity: 55,
   },
 
   // 경기도 (3개)
@@ -63,6 +75,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 127.0448,
     risk: 'medium',
     color: RISK_COLORS.medium,
+    probability: 45,
+    temperature: 27,
+    humidity: 42,
   },
   {
     id: 5,
@@ -71,6 +86,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 126.9283,
     risk: 'safe',
     color: RISK_COLORS.safe,
+    probability: 8,
+    temperature: 23,
+    humidity: 68,
   },
   {
     id: 6,
@@ -79,6 +97,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 127.0353,
     risk: 'high',
     color: RISK_COLORS.high,
+    probability: 82,
+    temperature: 29,
+    humidity: 30,
   },
 
   // 강원도 (2개)
@@ -89,6 +110,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 128.4655,
     risk: 'medium',
     color: RISK_COLORS.medium,
+    probability: 52,
+    temperature: 25,
+    humidity: 48,
   },
   {
     id: 8,
@@ -97,6 +121,9 @@ export const MOCK_FIRE_MARKERS: FireMarker[] = [
     longitude: 128.5569,
     risk: 'high',
     color: RISK_COLORS.high,
+    probability: 85,
+    temperature: 30,
+    humidity: 28,
   },
 ];
 

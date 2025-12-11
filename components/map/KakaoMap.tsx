@@ -70,6 +70,9 @@ export default function KakaoMap() {
       const zoomControl = new window.kakao.maps.ZoomControl();
       map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
 
+      // 모든 오버레이 저장
+      const overlays: any[] = [];
+
       // 마커 추가
       MOCK_FIRE_MARKERS.forEach((markerData) => {
         const markerPosition = new window.kakao.maps.LatLng(
@@ -95,21 +98,85 @@ export default function KakaoMap() {
 
         marker.setMap(map);
 
-        // 인포윈도우
-        const infowindow = new window.kakao.maps.InfoWindow({
-          content: `
-            <div style="padding:10px; color:#000;">
-              <b>${markerData.name}</b><br/>
-              <span style="color:${markerData.color}">${
-            RISK_LABELS[markerData.risk]
-          }</span>
+        // CustomOverlay 생성
+        const content = document.createElement('div');
+        content.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 45px));';
+        content.innerHTML = `
+          <div style="
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            min-width: 180px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          ">
+            <div style="
+              font-size: 16px;
+              font-weight: 600;
+              color: #030213;
+              margin-bottom: 12px;
+            ">${markerData.name}</div>
+
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 12px;
+              padding: 8px 12px;
+              background: #f9fafb;
+              border-radius: 8px;
+            ">
+              <div style="
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: ${markerData.color};
+              "></div>
+              <span style="
+                font-size: 14px;
+                font-weight: 500;
+                color: ${markerData.color};
+              ">${RISK_LABELS[markerData.risk]}</span>
             </div>
-          `,
+
+            <div style="
+              padding: 12px;
+              background: linear-gradient(135deg, ${markerData.color}15 0%, ${markerData.color}05 100%);
+              border-radius: 8px;
+            ">
+              <div style="
+                font-size: 12px;
+                color: #6b7280;
+                margin-bottom: 4px;
+              ">산불 발생 확률</div>
+              <div style="
+                font-size: 24px;
+                font-weight: 700;
+                color: ${markerData.color};
+              ">${markerData.probability}%</div>
+            </div>
+          </div>
+        `;
+
+        const customOverlay = new window.kakao.maps.CustomOverlay({
+          position: markerPosition,
+          content: content,
         });
 
+        overlays.push(customOverlay);
+
+        // 마커 클릭 이벤트
         window.kakao.maps.event.addListener(marker, "click", () => {
-          infowindow.open(map, marker);
+          // 모든 오버레이 닫기
+          overlays.forEach(overlay => overlay.setMap(null));
+          // 현재 오버레이만 열기
+          customOverlay.setMap(map);
         });
+      });
+
+      // 지도 클릭시 모든 오버레이 닫기
+      window.kakao.maps.event.addListener(map, "click", () => {
+        overlays.forEach(overlay => overlay.setMap(null));
       });
 
       setIsLoading(false);
@@ -123,8 +190,17 @@ export default function KakaoMap() {
   const createColoredMarkerSVG = (color: string) => {
     const svg = `
       <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 5 C13 5 8 10 8 17 C8 25 20 35 20 35 C20 35 32 25 32 17 C32 10 27 5 20 5 Z" fill="${color}" stroke="white" stroke-width="2"/>
-        <circle cx="20" cy="17" r="6" fill="white"/>
+        <defs>
+          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+          </filter>
+        </defs>
+        <path d="M20 5 C13 5 8 10 8 17 C8 25 20 35 20 35 C20 35 32 25 32 17 C32 10 27 5 20 5 Z"
+          fill="${color}"
+          stroke="white"
+          stroke-width="2"
+          filter="url(#shadow)"/>
+        <circle cx="20" cy="17" r="5" fill="white" opacity="0.9"/>
       </svg>
     `;
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
