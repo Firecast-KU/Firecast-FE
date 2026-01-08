@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, ActivityIndicator, Text, Platform } from "react-native";
 import WebView from "react-native-webview";
+import Constants from "expo-constants";
 import {
   MOCK_FIRE_STATIONS,
   INITIAL_MAP_CENTER,
@@ -78,6 +79,7 @@ const generateMapHTML = (apiKey: string) => {
 
       log('Script started');
       log('ReactNativeWebView: ' + (window.ReactNativeWebView ? 'YES' : 'NO'));
+      log('API Key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING'}');
 
       setTimeout(function() {
         log('Checking Kakao SDK...');
@@ -259,7 +261,8 @@ export default function KakaoMap() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiKey = process.env.EXPO_PUBLIC_KAKAO_MAP_KEY;
+  // 빌드된 앱에서는 Constants.expoConfig.extra에서, 개발 환경에서는 process.env에서 가져옴
+  const apiKey = Constants.expoConfig?.extra?.kakaoMapKey || process.env.EXPO_PUBLIC_KAKAO_MAP_KEY;
 
   // 모바일 환경에서는 WebView 사용
   if (Platform.OS !== "web") {
