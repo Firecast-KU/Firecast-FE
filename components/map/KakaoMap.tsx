@@ -2,14 +2,26 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, ActivityIndicator, Text, Platform } from "react-native";
 import WebView from "react-native-webview";
 import {
-  MOCK_FIRE_MARKERS,
+  MOCK_FIRE_STATIONS,
   INITIAL_MAP_CENTER,
   RISK_LABELS,
+  COLOR_CODE_TO_HEX,
+  COLOR_CODE_TO_RISK,
 } from "@/constants/mockData";
 
 // WebView용 HTML 생성 함수
 const generateMapHTML = (apiKey: string) => {
-  const markersJson = JSON.stringify(MOCK_FIRE_MARKERS);
+  // API 데이터를 마커에 필요한 형식으로 변환
+  const stations = MOCK_FIRE_STATIONS.map(station => ({
+    latitude: station.latitude,
+    longitude: station.longitude,
+    probability: station.probability,
+    location: station.location,
+    color: COLOR_CODE_TO_HEX[station.color],
+    risk: COLOR_CODE_TO_RISK[station.color],
+  }));
+
+  const markersJson = JSON.stringify(stations);
   const riskLabelsJson = JSON.stringify(RISK_LABELS);
   const centerLat = INITIAL_MAP_CENTER.latitude;
   const centerLng = INITIAL_MAP_CENTER.longitude;
@@ -123,7 +135,7 @@ const generateMapHTML = (apiKey: string) => {
               var marker = new kakao.maps.Marker({
                 position: markerPosition,
                 image: markerImage,
-                title: markerData.name
+                title: markerData.location
               });
 
               marker.setMap(map);
@@ -133,13 +145,13 @@ const generateMapHTML = (apiKey: string) => {
               content.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 45px));';
               content.innerHTML =
                 '<div style="padding: 16px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 180px; font-family: sans-serif;">' +
-                '<div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">' + markerData.name + '</div>' +
+                '<div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">' + markerData.location + '</div>' +
                 '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px;">' +
                 '<div style="width: 8px; height: 8px; border-radius: 50%; background: ' + markerData.color + ';"></div>' +
                 '<span style="font-size: 14px; font-weight: 500; color: ' + markerData.color + ';">' + riskLabels[markerData.risk] + '</span></div>' +
                 '<div style="padding: 12px; background: linear-gradient(135deg, ' + markerData.color + '15 0%, ' + markerData.color + '05 100%); border-radius: 8px;">' +
                 '<div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">산불 발생 확률</div>' +
-                '<div style="font-size: 24px; font-weight: 700; color: ' + markerData.color + ';">' + markerData.probability + '%</div></div></div>';
+                '<div style="font-size: 24px; font-weight: 700; color: ' + markerData.color + ';">' + markerData.probability.toFixed(1) + '%</div></div></div>';
 
               var customOverlay = new kakao.maps.CustomOverlay({
                 position: markerPosition,
@@ -306,13 +318,16 @@ export default function KakaoMap() {
 
       const overlays: any[] = [];
 
-      MOCK_FIRE_MARKERS.forEach((markerData) => {
+      MOCK_FIRE_STATIONS.forEach((station) => {
         const markerPosition = new window.kakao.maps.LatLng(
-          markerData.latitude,
-          markerData.longitude
+          station.latitude,
+          station.longitude
         );
 
-        const imageSrc = createColoredMarkerSVG(markerData.color);
+        const hexColor = COLOR_CODE_TO_HEX[station.color];
+        const riskLevel = COLOR_CODE_TO_RISK[station.color];
+
+        const imageSrc = createColoredMarkerSVG(hexColor);
         const imageSize = new window.kakao.maps.Size(40, 40);
         const imageOption = { offset: new window.kakao.maps.Point(20, 40) };
 
@@ -325,7 +340,7 @@ export default function KakaoMap() {
         const marker = new window.kakao.maps.Marker({
           position: markerPosition,
           image: markerImage,
-          title: markerData.name,
+          title: station.location,
         });
 
         marker.setMap(map);
@@ -346,7 +361,7 @@ export default function KakaoMap() {
               font-weight: 600;
               color: #030213;
               margin-bottom: 12px;
-            ">${markerData.name}</div>
+            ">${station.location}</div>
 
             <div style="
               display: flex;
@@ -361,18 +376,18 @@ export default function KakaoMap() {
                 width: 8px;
                 height: 8px;
                 border-radius: 50%;
-                background: ${markerData.color};
+                background: ${hexColor};
               "></div>
               <span style="
                 font-size: 14px;
                 font-weight: 500;
-                color: ${markerData.color};
-              ">${RISK_LABELS[markerData.risk]}</span>
+                color: ${hexColor};
+              ">${RISK_LABELS[riskLevel]}</span>
             </div>
 
             <div style="
               padding: 12px;
-              background: linear-gradient(135deg, ${markerData.color}15 0%, ${markerData.color}05 100%);
+              background: linear-gradient(135deg, ${hexColor}15 0%, ${hexColor}05 100%);
               border-radius: 8px;
             ">
               <div style="
@@ -383,8 +398,8 @@ export default function KakaoMap() {
               <div style="
                 font-size: 24px;
                 font-weight: 700;
-                color: ${markerData.color};
-              ">${markerData.probability}%</div>
+                color: ${hexColor};
+              ">${station.probability.toFixed(1)}%</div>
             </div>
           </div>
         `;

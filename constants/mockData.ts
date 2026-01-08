@@ -1,25 +1,38 @@
-// 임시 산불 위험도 마커 데이터
+// API 응답 형식에 맞춘 산불 위험도 데이터
 
+export type ColorCode = 'red' | 'orange' | 'yellow' | 'green';
 export type RiskLevel = 'high' | 'medium' | 'low' | 'safe';
 
-export interface FireMarker {
-  id: number;
-  name: string;
+export interface FireStationData {
   latitude: number;
   longitude: number;
-  risk: RiskLevel;
-  color: string;
   probability: number; // 산불 발생 확률 (%)
-  temperature?: number; // 온도 (°C)
-  humidity?: number; // 습도 (%)
+  color: ColorCode; // API에서 제공하는 색상 코드
+  location: string; // 관측소 이름
 }
 
-// 위험도별 색상 정의
+// API 색상 코드를 HEX 색상으로 매핑
+export const COLOR_CODE_TO_HEX: Record<ColorCode, string> = {
+  red: '#ef4444',    // 빨강 - 위험
+  orange: '#f97316', // 주황 - 주의
+  yellow: '#eab308', // 노랑 - 낮음
+  green: '#22c55e',  // 초록 - 안전
+} as const;
+
+// API 색상 코드를 위험도 레벨로 매핑
+export const COLOR_CODE_TO_RISK: Record<ColorCode, RiskLevel> = {
+  red: 'high',
+  orange: 'medium',
+  yellow: 'low',
+  green: 'safe',
+} as const;
+
+// 위험도별 색상 정의 (하위 호환성 유지)
 export const RISK_COLORS = {
-  high: '#ef4444',    // 빨강 - 위험
-  medium: '#f97316',  // 주황 - 주의
-  low: '#eab308',     // 노랑 - 낮음
-  safe: '#22c55e',    // 초록 - 안전
+  high: '#ef4444',
+  medium: '#f97316',
+  low: '#eab308',
+  safe: '#22c55e',
 } as const;
 
 // 위험도별 라벨
@@ -30,106 +43,44 @@ export const RISK_LABELS = {
   safe: '안전',
 } as const;
 
-// 임시 마커 데이터 (서울/경기/강원)
-export const MOCK_FIRE_MARKERS: FireMarker[] = [
-  // 서울 (3개)
-  {
-    id: 1,
-    name: '서울 관악산',
-    latitude: 37.4782,
-    longitude: 126.9516,
-    risk: 'medium',
-    color: RISK_COLORS.medium,
-    probability: 78,
-    temperature: 28,
-    humidity: 35,
-  },
-  {
-    id: 2,
-    name: '서울 북한산',
-    latitude: 37.6586,
-    longitude: 127.0158,
-    risk: 'safe',
-    color: RISK_COLORS.safe,
-    probability: 12,
-    temperature: 24,
-    humidity: 65,
-  },
-  {
-    id: 3,
-    name: '서울 남산',
-    latitude: 37.5512,
-    longitude: 126.9882,
-    risk: 'safe',
-    color: RISK_COLORS.safe,
-    probability: 25,
-    temperature: 26,
-    humidity: 55,
-  },
+// Mock 데이터: API 응답 형식 (주요 관측소 위치)
+export const MOCK_FIRE_STATIONS: FireStationData[] = [
+  // 서울/경기
+  { latitude: 37.5665, longitude: 126.9780, probability: 25.3, color: 'green', location: 'Seoul' },
+  { latitude: 37.4138, longitude: 127.5183, probability: 72.8, color: 'orange', location: 'Gwangju' },
+  { latitude: 37.8813, longitude: 127.7298, probability: 45.2, color: 'yellow', location: 'Chuncheon' },
+  { latitude: 37.4563, longitude: 126.7052, probability: 18.7, color: 'green', location: 'Incheon' },
+  { latitude: 37.2636, longitude: 127.0286, probability: 82.1, color: 'red', location: 'Suwon' },
 
-  // 경기도 (3개)
-  {
-    id: 4,
-    name: '경기 청계산',
-    latitude: 37.4175,
-    longitude: 127.0448,
-    risk: 'low',
-    color: RISK_COLORS.low,
-    probability: 45,
-    temperature: 27,
-    humidity: 42,
-  },
-  {
-    id: 5,
-    name: '경기 수리산',
-    latitude: 37.4012,
-    longitude: 126.9283,
-    risk: 'safe',
-    color: RISK_COLORS.safe,
-    probability: 8,
-    temperature: 23,
-    humidity: 68,
-  },
-  {
-    id: 6,
-    name: '경기 광교산',
-    latitude: 37.3196,
-    longitude: 127.0353,
-    risk: 'high',
-    color: RISK_COLORS.high,
-    probability: 82,
-    temperature: 29,
-    humidity: 30,
-  },
+  // 강원도
+  { latitude: 38.2080, longitude: 128.5918, probability: 88.5, color: 'red', location: 'Sokcho' },
+  { latitude: 37.7519, longitude: 128.8761, probability: 53.6, color: 'yellow', location: 'Gangneung' },
+  { latitude: 37.3422, longitude: 127.9197, probability: 67.4, color: 'orange', location: 'Wonju' },
 
-  // 강원도 (2개)
-  {
-    id: 7,
-    name: '강원 설악산',
-    latitude: 38.1198,
-    longitude: 128.4655,
-    risk: 'low',
-    color: RISK_COLORS.low,
-    probability: 52,
-    temperature: 25,
-    humidity: 48,
-  },
-  {
-    id: 8,
-    name: '강원 오대산',
-    latitude: 37.7977,
-    longitude: 128.5569,
-    risk: 'high',
-    color: RISK_COLORS.high,
-    probability: 85,
-    temperature: 30,
-    humidity: 28,
-  },
+  // 충청도
+  { latitude: 36.6424, longitude: 127.4890, probability: 31.2, color: 'yellow', location: 'Cheongju' },
+  { latitude: 36.3504, longitude: 127.3845, probability: 15.8, color: 'green', location: 'Daejeon' },
+  { latitude: 36.8065, longitude: 127.1522, probability: 42.9, color: 'yellow', location: 'Cheonan' },
+
+  // 전라도
+  { latitude: 35.1796, longitude: 126.9076, probability: 22.5, color: 'green', location: 'Gwangju-Jeonnam' },
+  { latitude: 35.8242, longitude: 127.1480, probability: 76.3, color: 'orange', location: 'Jeonju' },
+  { latitude: 34.8118, longitude: 126.3922, probability: 12.4, color: 'green', location: 'Mokpo' },
+
+  // 경상도
+  { latitude: 35.1796, longitude: 129.0756, probability: 85.7, color: 'red', location: 'Busan' },
+  { latitude: 35.5384, longitude: 129.3114, probability: 91.2, color: 'red', location: 'Ulsan' },
+  { latitude: 35.8714, longitude: 128.6014, probability: 58.9, color: 'yellow', location: 'Daegu' },
+  { latitude: 36.5760, longitude: 128.5056, probability: 47.1, color: 'yellow', location: 'Andong' },
+
+  // 제주도
+  { latitude: 33.4996, longitude: 126.5312, probability: 8.3, color: 'green', location: 'Jeju' },
+  { latitude: 33.2541, longitude: 126.5601, probability: 14.6, color: 'green', location: 'Seogwipo' },
 ];
 
 // 지도 초기 설정
 export const INITIAL_MAP_CENTER = {
-  latitude: 37.5665,  // 서울 중심
-  longitude: 126.9780,
-  level: 10, // 줌 레벨 (1~14, 숫자가 작을수록 확대)
+  latitude: 36.5,  // 한국 중심
+  longitude: 127.5,
+  level: 13, // 줌 레벨 (1~14, 숫자가 작을수록 확대) - 전국 보기
 };
