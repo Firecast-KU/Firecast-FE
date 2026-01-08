@@ -328,6 +328,12 @@ export default function KakaoMap() {
           mixedContentMode="always"
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
+          cacheEnabled={false}
+          cacheMode="LOAD_NO_CACHE"
+          thirdPartyCookiesEnabled={true}
+          sharedCookiesEnabled={true}
+          geolocationEnabled={true}
+          androidLayerType="hardware"
           renderLoading={() => (
             <View className="flex-1 items-center justify-center bg-gray-100">
               <ActivityIndicator size="large" color="#FF3B30" />
