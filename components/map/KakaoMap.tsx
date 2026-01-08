@@ -219,15 +219,15 @@ const generateMapHTML = (apiKey: string) => {
                 var clickContent = document.createElement('div');
                 clickContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, -100%);';
                 clickContent.innerHTML =
-                  '<div style="padding: 14px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 160px; font-family: sans-serif; border: 2px solid ' + nearest.color + ';">' +
-                  '<div style="font-size: 14px; font-weight: 600; color: #030213; margin-bottom: 10px;">📍 가장 가까운 관측소</div>' +
-                  '<div style="font-size: 15px; font-weight: 600; color: #030213; margin-bottom: 10px;">' + nearest.location + '</div>' +
-                  '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 6px 10px; background: #f9fafb; border-radius: 8px;">' +
+                  '<div style="padding: 16px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 180px; font-family: sans-serif;">' +
+                  '<div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">📍 가장 가까운 관측소</div>' +
+                  '<div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">' + nearest.location + '</div>' +
+                  '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px;">' +
                   '<div style="width: 8px; height: 8px; border-radius: 50%; background: ' + nearest.color + ';"></div>' +
-                  '<span style="font-size: 13px; font-weight: 500; color: ' + nearest.color + ';">' + riskLabels[nearest.risk] + '</span></div>' +
-                  '<div style="padding: 10px; background: linear-gradient(135deg, ' + nearest.color + '15 0%, ' + nearest.color + '05 100%); border-radius: 8px;">' +
-                  '<div style="font-size: 11px; color: #6b7280; margin-bottom: 3px;">산불 발생 확률</div>' +
-                  '<div style="font-size: 22px; font-weight: 700; color: ' + nearest.color + ';">' + nearest.probability.toFixed(1) + '%</div></div></div>';
+                  '<span style="font-size: 14px; font-weight: 500; color: ' + nearest.color + ';">' + riskLabels[nearest.risk] + '</span></div>' +
+                  '<div style="padding: 12px; background: linear-gradient(135deg, ' + nearest.color + '15 0%, ' + nearest.color + '05 100%); border-radius: 8px;">' +
+                  '<div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">산불 발생 확률</div>' +
+                  '<div style="font-size: 24px; font-weight: 700; color: ' + nearest.color + ';">' + nearest.probability.toFixed(1) + '%</div></div></div>';
 
                 clickOverlay = new kakao.maps.CustomOverlay({
                   position: latlng,
@@ -542,23 +542,22 @@ export default function KakaoMap() {
           clickContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, -100%);';
           clickContent.innerHTML = `
             <div style="
-              padding: 14px;
+              padding: 16px;
               background: white;
               border-radius: 12px;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-              min-width: 160px;
+              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+              min-width: 180px;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              border: 2px solid ${hexColor};
             ">
-              <div style="font-size: 14px; font-weight: 600; color: #030213; margin-bottom: 10px;">📍 가장 가까운 관측소</div>
-              <div style="font-size: 15px; font-weight: 600; color: #030213; margin-bottom: 10px;">${nearest.location}</div>
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 6px 10px; background: #f9fafb; border-radius: 8px;">
+              <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">📍 가장 가까운 관측소</div>
+              <div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">${nearest.location}</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px;">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: ${hexColor};"></div>
-                <span style="font-size: 13px; font-weight: 500; color: ${hexColor};">${RISK_LABELS[riskLevel]}</span>
+                <span style="font-size: 14px; font-weight: 500; color: ${hexColor};">${RISK_LABELS[riskLevel]}</span>
               </div>
-              <div style="padding: 10px; background: linear-gradient(135deg, ${hexColor}15 0%, ${hexColor}05 100%); border-radius: 8px;">
-                <div style="font-size: 11px; color: #6b7280; margin-bottom: 3px;">산불 발생 확률</div>
-                <div style="font-size: 22px; font-weight: 700; color: ${hexColor};">${nearest.probability.toFixed(1)}%</div>
+              <div style="padding: 12px; background: linear-gradient(135deg, ${hexColor}15 0%, ${hexColor}05 100%); border-radius: 8px;">
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">산불 발생 확률</div>
+                <div style="font-size: 24px; font-weight: 700; color: ${hexColor};">${nearest.probability.toFixed(1)}%</div>
               </div>
             </div>
           `;
