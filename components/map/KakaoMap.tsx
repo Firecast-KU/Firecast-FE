@@ -166,8 +166,76 @@ const generateMapHTML = (apiKey: string) => {
               });
             });
 
-            kakao.maps.event.addListener(map, "click", function() {
+            // 거리 계산 함수 (Haversine formula)
+            function getDistance(lat1, lng1, lat2, lng2) {
+              var R = 6371; // 지구 반경 (km)
+              var dLat = (lat2 - lat1) * Math.PI / 180;
+              var dLng = (lng2 - lng1) * Math.PI / 180;
+              var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+              var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              return R * c;
+            }
+
+            // 가장 가까운 관측소 찾기
+            function findNearestStation(lat, lng) {
+              var nearest = null;
+              var minDistance = Infinity;
+
+              markers.forEach(function(station) {
+                var distance = getDistance(lat, lng, station.latitude, station.longitude);
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  nearest = station;
+                }
+              });
+
+              return nearest;
+            }
+
+            // 지도 클릭 이벤트 - 가장 가까운 관측소 정보 표시
+            var clickOverlay = null;
+
+            kakao.maps.event.addListener(map, "click", function(mouseEvent) {
+              // 기존 마커 오버레이 모두 닫기
               overlays.forEach(function(overlay) { overlay.setMap(null); });
+
+              // 클릭 위치
+              var latlng = mouseEvent.latLng;
+              var clickLat = latlng.getLat();
+              var clickLng = latlng.getLng();
+
+              // 가장 가까운 관측소 찾기
+              var nearest = findNearestStation(clickLat, clickLng);
+
+              if (nearest) {
+                // 기존 클릭 오버레이 제거
+                if (clickOverlay) {
+                  clickOverlay.setMap(null);
+                }
+
+                // 클릭한 위치에 오버레이 표시
+                var clickContent = document.createElement('div');
+                clickContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, -100%);';
+                clickContent.innerHTML =
+                  '<div style="padding: 14px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 160px; font-family: sans-serif; border: 2px solid ' + nearest.color + ';">' +
+                  '<div style="font-size: 14px; font-weight: 600; color: #030213; margin-bottom: 10px;">📍 가장 가까운 관측소</div>' +
+                  '<div style="font-size: 15px; font-weight: 600; color: #030213; margin-bottom: 10px;">' + nearest.location + '</div>' +
+                  '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 6px 10px; background: #f9fafb; border-radius: 8px;">' +
+                  '<div style="width: 8px; height: 8px; border-radius: 50%; background: ' + nearest.color + ';"></div>' +
+                  '<span style="font-size: 13px; font-weight: 500; color: ' + nearest.color + ';">' + riskLabels[nearest.risk] + '</span></div>' +
+                  '<div style="padding: 10px; background: linear-gradient(135deg, ' + nearest.color + '15 0%, ' + nearest.color + '05 100%); border-radius: 8px;">' +
+                  '<div style="font-size: 11px; color: #6b7280; margin-bottom: 3px;">산불 발생 확률</div>' +
+                  '<div style="font-size: 22px; font-weight: 700; color: ' + nearest.color + ';">' + nearest.probability.toFixed(1) + '%</div></div></div>';
+
+                clickOverlay = new kakao.maps.CustomOverlay({
+                  position: latlng,
+                  content: clickContent
+                });
+
+                clickOverlay.setMap(map);
+              }
             });
 
             log('All markers added!');
@@ -417,8 +485,91 @@ export default function KakaoMap() {
         });
       });
 
-      window.kakao.maps.event.addListener(map, "click", () => {
+      // 거리 계산 함수 (Haversine formula)
+      const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371; // 지구 반경 (km)
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      };
+
+      // 가장 가까운 관측소 찾기
+      const findNearestStation = (lat: number, lng: number) => {
+        let nearest = MOCK_FIRE_STATIONS[0];
+        let minDistance = Infinity;
+
+        MOCK_FIRE_STATIONS.forEach((station) => {
+          const distance = getDistance(lat, lng, station.latitude, station.longitude);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearest = station;
+          }
+        });
+
+        return nearest;
+      };
+
+      // 지도 클릭 이벤트 - 가장 가까운 관측소 정보 표시
+      let clickOverlay: any = null;
+
+      window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
+        // 기존 마커 오버레이 모두 닫기
         overlays.forEach(overlay => overlay.setMap(null));
+
+        // 클릭 위치
+        const latlng = mouseEvent.latLng;
+        const clickLat = latlng.getLat();
+        const clickLng = latlng.getLng();
+
+        // 가장 가까운 관측소 찾기
+        const nearest = findNearestStation(clickLat, clickLng);
+
+        if (nearest) {
+          // 기존 클릭 오버레이 제거
+          if (clickOverlay) {
+            clickOverlay.setMap(null);
+          }
+
+          const hexColor = COLOR_CODE_TO_HEX[nearest.color];
+          const riskLevel = COLOR_CODE_TO_RISK[nearest.color];
+
+          // 클릭한 위치에 오버레이 표시
+          const clickContent = document.createElement('div');
+          clickContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, -100%);';
+          clickContent.innerHTML = `
+            <div style="
+              padding: 14px;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              min-width: 160px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              border: 2px solid ${hexColor};
+            ">
+              <div style="font-size: 14px; font-weight: 600; color: #030213; margin-bottom: 10px;">📍 가장 가까운 관측소</div>
+              <div style="font-size: 15px; font-weight: 600; color: #030213; margin-bottom: 10px;">${nearest.location}</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 6px 10px; background: #f9fafb; border-radius: 8px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${hexColor};"></div>
+                <span style="font-size: 13px; font-weight: 500; color: ${hexColor};">${RISK_LABELS[riskLevel]}</span>
+              </div>
+              <div style="padding: 10px; background: linear-gradient(135deg, ${hexColor}15 0%, ${hexColor}05 100%); border-radius: 8px;">
+                <div style="font-size: 11px; color: #6b7280; margin-bottom: 3px;">산불 발생 확률</div>
+                <div style="font-size: 22px; font-weight: 700; color: ${hexColor};">${nearest.probability.toFixed(1)}%</div>
+              </div>
+            </div>
+          `;
+
+          clickOverlay = new window.kakao.maps.CustomOverlay({
+            position: latlng,
+            content: clickContent,
+          });
+
+          clickOverlay.setMap(map);
+        }
       });
 
       setIsLoading(false);
