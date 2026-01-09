@@ -6,7 +6,15 @@
       "Bash(npm install:*)",
       "Bash(cat:*)",
       "Bash(eas secret:create:*)",
-      "Bash(eas secret:list:*)"
+      "Bash(eas secret:list:*)",
+      "Bash(eas build:*)",
+      "Bash(taskkill:*)",
+      "Bash(eas env:list:*)",
+      "Bash(eas secret:delete:*)",
+      "Bash(eas env:delete:*)",
+      "Bash(timeout 10 cmd:*)",
+      "Bash(timeout 15 cmd /c \"ping -n 16 127.0.0.1 > nul\")",
+      "Bash(timeout 20 cmd:*)"
     ],
     "deny": [],
     "ask": []

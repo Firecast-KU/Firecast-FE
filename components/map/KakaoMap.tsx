@@ -43,7 +43,7 @@ const generateMapHTML = (apiKey: string) => {
 <body>
   <div id="debug">Initializing...</div>
   <div id="map"></div>
-  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false"></script>
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false" referrerpolicy="no-referrer"></script>
   <script>
     (function() {
       var debugEl = document.getElementById('debug');
@@ -96,7 +96,13 @@ const generateMapHTML = (apiKey: string) => {
 
         log('Kakao SDK OK, loading maps...');
 
+        // 타임아웃 설정 (10초)
+        var loadTimeout = setTimeout(function() {
+          error('Maps load timeout - API key may not be authorized for this domain');
+        }, 10000);
+
         window.kakao.maps.load(function() {
+          clearTimeout(loadTimeout);
           log('Maps loaded, creating map...');
 
           try {
@@ -312,7 +318,10 @@ export default function KakaoMap() {
     return (
       <View className="flex-1">
         <WebView
-          source={{ html: generateMapHTML(apiKey) }}
+          source={{
+            html: generateMapHTML(apiKey),
+            baseUrl: 'http://localhost/'
+          }}
           style={{ flex: 1 }}
           onLoadStart={() => {
             console.log('[WebView] Load started');
