@@ -48,14 +48,42 @@ const generateMapHTML = (apiKey: string) => {
     // SDK 로딩 상태 추적
     window.kakaoSDKLoaded = false;
     window.kakaoSDKError = null;
+
+    // Fetch로 SDK 동적 로드
+    (function() {
+      var debugEl = document.getElementById('debug');
+      debugEl.innerHTML = 'Fetching Kakao SDK...';
+
+      fetch('https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false')
+        .then(function(response) {
+          debugEl.innerHTML = 'SDK fetched, loading...';
+          return response.text();
+        })
+        .then(function(scriptContent) {
+          debugEl.innerHTML = 'SDK loaded, executing...';
+          // Blob URL로 스크립트 실행
+          var blob = new Blob([scriptContent], { type: 'application/javascript' });
+          var url = URL.createObjectURL(blob);
+          var script = document.createElement('script');
+          script.src = url;
+          script.onload = function() {
+            window.kakaoSDKLoaded = true;
+            debugEl.innerHTML = 'SDK ready!';
+            URL.revokeObjectURL(url);
+          };
+          script.onerror = function() {
+            window.kakaoSDKError = 'Script execution failed';
+            debugEl.innerHTML = 'ERROR: Script execution failed';
+          };
+          document.head.appendChild(script);
+        })
+        .catch(function(error) {
+          window.kakaoSDKError = 'Fetch failed: ' + error.message;
+          debugEl.innerHTML = 'ERROR: Fetch failed - ' + error.message;
+          debugEl.style.color = 'red';
+        });
+    })();
   </script>
-  <script
-    type="text/javascript"
-    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false"
-    crossorigin="anonymous"
-    onload="window.kakaoSDKLoaded = true; console.log('Kakao SDK script loaded');"
-    onerror="window.kakaoSDKError = 'Script load failed'; console.error('Kakao SDK script failed to load');"
-  ></script>
   <script>
     (function() {
       var debugEl = document.getElementById('debug');
@@ -96,7 +124,40 @@ const generateMapHTML = (apiKey: string) => {
       log('Origin: ' + (window.location.origin || 'N/A'));
       log('Referrer: ' + (document.referrer || 'NONE'));
 
-      setTimeout(function() {
+      // SDK 로딩 대기 (최대 20초)
+      var checkCount = 0;
+      var maxChecks = 40; // 20초 (500ms * 40)
+
+      var checkSDK = setInterval(function() {
+        checkCount++;
+
+        if (window.kakaoSDKLoaded && window.kakao) {
+          clearInterval(checkSDK);
+          log('SDK loaded successfully after ' + (checkCount * 0.5) + 's');
+          initializeMap();
+          return;
+        }
+
+        if (window.kakaoSDKError) {
+          clearInterval(checkSDK);
+          error('SDK loading failed: ' + window.kakaoSDKError);
+          return;
+        }
+
+        if (checkCount >= maxChecks) {
+          clearInterval(checkSDK);
+          error('SDK loading timeout (20s)');
+          error('SDK Loaded flag: ' + window.kakaoSDKLoaded);
+          error('Kakao object: ' + (window.kakao ? 'EXISTS' : 'MISSING'));
+          return;
+        }
+
+        if (checkCount % 4 === 0) { // 2초마다
+          log('Waiting for SDK... (' + (checkCount * 0.5) + 's)');
+        }
+      }, 500);
+
+      function initializeMap() {
         log('Checking Kakao SDK...');
         log('SDK Loaded: ' + window.kakaoSDKLoaded);
         log('SDK Error: ' + (window.kakaoSDKError || 'NONE'));
@@ -287,7 +348,7 @@ const generateMapHTML = (apiKey: string) => {
             error('Map creation failed: ' + e.message);
           }
         });
-      }, 2000);
+      }
     })();
   </script>
 </body>
@@ -380,6 +441,8 @@ export default function KakaoMap() {
           allowFileAccessFromFileURLs={true}
           allowUniversalAccessFromFileURLs={true}
           allowFileAccess={true}
+          incognito={false}
+          setSupportMultipleWindows={false}
           renderLoading={() => (
             <View className="flex-1 items-center justify-center bg-gray-100">
               <ActivityIndicator size="large" color="#FF3B30" />
