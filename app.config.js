@@ -26,7 +26,9 @@ module.exports = {
         "ACCESS_NETWORK_STATE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      usesCleartextTraffic: true,
+      allowBackup: false
     },
     web: {
       output: "static",

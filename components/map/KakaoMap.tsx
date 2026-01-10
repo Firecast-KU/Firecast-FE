@@ -33,6 +33,7 @@ const generateMapHTML = (apiKey: string) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; img-src * data: blob:; frame-src *; style-src * 'unsafe-inline';">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -43,7 +44,18 @@ const generateMapHTML = (apiKey: string) => {
 <body>
   <div id="debug">Initializing...</div>
   <div id="map"></div>
-  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false" crossorigin="anonymous"></script>
+  <script>
+    // SDK 로딩 상태 추적
+    window.kakaoSDKLoaded = false;
+    window.kakaoSDKError = null;
+  </script>
+  <script
+    type="text/javascript"
+    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false"
+    crossorigin="anonymous"
+    onload="window.kakaoSDKLoaded = true; console.log('Kakao SDK script loaded');"
+    onerror="window.kakaoSDKError = 'Script load failed'; console.error('Kakao SDK script failed to load');"
+  ></script>
   <script>
     (function() {
       var debugEl = document.getElementById('debug');
@@ -86,9 +98,21 @@ const generateMapHTML = (apiKey: string) => {
 
       setTimeout(function() {
         log('Checking Kakao SDK...');
+        log('SDK Loaded: ' + window.kakaoSDKLoaded);
+        log('SDK Error: ' + (window.kakaoSDKError || 'NONE'));
+
+        if (window.kakaoSDKError) {
+          error('SDK script failed to load from server');
+          error('Possible causes:');
+          error('1. No internet connection on device');
+          error('2. Kakao server blocked by network');
+          error('3. WebView network security settings');
+          return;
+        }
 
         if (!window.kakao) {
           error('Kakao SDK not loaded');
+          error('SDK object missing even though script loaded');
           return;
         }
 
@@ -354,6 +378,9 @@ export default function KakaoMap() {
           sharedCookiesEnabled={true}
           geolocationEnabled={true}
           androidLayerType="hardware"
+          allowFileAccessFromFileURLs={true}
+          allowUniversalAccessFromFileURLs={true}
+          allowFileAccess={true}
           renderLoading={() => (
             <View className="flex-1 items-center justify-center bg-gray-100">
               <ActivityIndicator size="large" color="#FF3B30" />
