@@ -351,8 +351,7 @@ export default function KakaoMap() {
       <View className="flex-1">
         <WebView
           source={{
-            html: generateMapHTML(apiKey),
-            baseUrl: 'https://localhost/'
+            html: generateMapHTML(apiKey)
           }}
           style={{ flex: 1 }}
           onLoadStart={() => {

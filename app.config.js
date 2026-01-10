@@ -38,6 +38,15 @@ module.exports = {
       "expo-router",
       "expo-web-browser",
       [
+        "expo-build-properties",
+        {
+          android: {
+            usesCleartextTraffic: true,
+            networkSecurityConfig: "network_security_config"
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./assets/images/splash-icon.png",
