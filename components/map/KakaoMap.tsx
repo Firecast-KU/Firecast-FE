@@ -42,48 +42,8 @@ const generateMapHTML = (apiKey: string) => {
   </style>
 </head>
 <body>
-  <div id="debug">Initializing...</div>
+  <div id="debug">Waiting for SDK injection...</div>
   <div id="map"></div>
-  <script>
-    // SDK 로딩 상태 추적
-    window.kakaoSDKLoaded = false;
-    window.kakaoSDKError = null;
-
-    // Fetch로 SDK 동적 로드
-    (function() {
-      var debugEl = document.getElementById('debug');
-      debugEl.innerHTML = 'Fetching Kakao SDK...';
-
-      fetch('https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false')
-        .then(function(response) {
-          debugEl.innerHTML = 'SDK fetched, loading...';
-          return response.text();
-        })
-        .then(function(scriptContent) {
-          debugEl.innerHTML = 'SDK loaded, executing...';
-          // Blob URL로 스크립트 실행
-          var blob = new Blob([scriptContent], { type: 'application/javascript' });
-          var url = URL.createObjectURL(blob);
-          var script = document.createElement('script');
-          script.src = url;
-          script.onload = function() {
-            window.kakaoSDKLoaded = true;
-            debugEl.innerHTML = 'SDK ready!';
-            URL.revokeObjectURL(url);
-          };
-          script.onerror = function() {
-            window.kakaoSDKError = 'Script execution failed';
-            debugEl.innerHTML = 'ERROR: Script execution failed';
-          };
-          document.head.appendChild(script);
-        })
-        .catch(function(error) {
-          window.kakaoSDKError = 'Fetch failed: ' + error.message;
-          debugEl.innerHTML = 'ERROR: Fetch failed - ' + error.message;
-          debugEl.style.color = 'red';
-        });
-    })();
-  </script>
   <script>
     (function() {
       var debugEl = document.getElementById('debug');
@@ -119,10 +79,8 @@ const generateMapHTML = (apiKey: string) => {
 
       log('Script started');
       log('ReactNativeWebView: ' + (window.ReactNativeWebView ? 'YES' : 'NO'));
-      log('API Key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING'}');
       log('Location: ' + window.location.href);
-      log('Origin: ' + (window.location.origin || 'N/A'));
-      log('Referrer: ' + (document.referrer || 'NONE'));
+      log('Kakao SDK injected: ' + (typeof window.kakao !== 'undefined' ? 'YES' : 'NO'));
 
       // SDK 로딩 대기 (최대 20초)
       var checkCount = 0;
@@ -131,58 +89,35 @@ const generateMapHTML = (apiKey: string) => {
       var checkSDK = setInterval(function() {
         checkCount++;
 
-        if (window.kakaoSDKLoaded && window.kakao) {
+        if (window.kakao && window.kakao.maps) {
           clearInterval(checkSDK);
-          log('SDK loaded successfully after ' + (checkCount * 0.5) + 's');
+          log('SDK detected after ' + (checkCount * 0.5) + 's');
           initializeMap();
-          return;
-        }
-
-        if (window.kakaoSDKError) {
-          clearInterval(checkSDK);
-          error('SDK loading failed: ' + window.kakaoSDKError);
           return;
         }
 
         if (checkCount >= maxChecks) {
           clearInterval(checkSDK);
-          error('SDK loading timeout (20s)');
-          error('SDK Loaded flag: ' + window.kakaoSDKLoaded);
-          error('Kakao object: ' + (window.kakao ? 'EXISTS' : 'MISSING'));
+          error('SDK injection timeout (20s)');
+          error('window.kakao exists: ' + (typeof window.kakao !== 'undefined' ? 'YES' : 'NO'));
+          error('window.kakao.maps exists: ' + (window.kakao && window.kakao.maps ? 'YES' : 'NO'));
           return;
         }
 
         if (checkCount % 4 === 0) { // 2초마다
-          log('Waiting for SDK... (' + (checkCount * 0.5) + 's)');
+          log('Waiting for SDK injection... (' + (checkCount * 0.5) + 's)');
         }
       }, 500);
 
       function initializeMap() {
-        log('Checking Kakao SDK...');
-        log('SDK Loaded: ' + window.kakaoSDKLoaded);
-        log('SDK Error: ' + (window.kakaoSDKError || 'NONE'));
+        log('Initializing map with injected SDK...');
 
-        if (window.kakaoSDKError) {
-          error('SDK script failed to load from server');
-          error('Possible causes:');
-          error('1. No internet connection on device');
-          error('2. Kakao server blocked by network');
-          error('3. WebView network security settings');
+        if (!window.kakao || !window.kakao.maps) {
+          error('Kakao SDK missing in initializeMap');
           return;
         }
 
-        if (!window.kakao) {
-          error('Kakao SDK not loaded');
-          error('SDK object missing even though script loaded');
-          return;
-        }
-
-        if (!window.kakao.maps) {
-          error('Kakao maps not available');
-          return;
-        }
-
-        log('Kakao SDK OK, loading maps...');
+        log('Kakao SDK confirmed, loading maps...');
 
         // 타임아웃 설정 (15초로 증가)
         var loadTimeout = setTimeout(function() {
@@ -359,9 +294,31 @@ export default function KakaoMap() {
   const mapContainerRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [kakaoSDK, setKakaoSDK] = useState<string>('');
 
   // 빌드된 앱에서는 Constants.expoConfig.extra에서, 개발 환경에서는 process.env에서 가져옴
   const apiKey = Constants.expoConfig?.extra?.kakaoMapKey || process.env.EXPO_PUBLIC_KAKAO_MAP_KEY;
+
+  // React Native에서 카카오 SDK fetch (WebView 외부에서)
+  useEffect(() => {
+    if (Platform.OS === 'web' || !apiKey) return;
+
+    console.log('[KakaoMap] Fetching Kakao SDK from React Native...');
+
+    fetch(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`)
+      .then(response => {
+        console.log('[KakaoMap] SDK fetch response:', response.status);
+        return response.text();
+      })
+      .then(sdkScript => {
+        console.log('[KakaoMap] SDK fetched successfully, length:', sdkScript.length);
+        setKakaoSDK(sdkScript);
+      })
+      .catch(err => {
+        console.error('[KakaoMap] SDK fetch failed:', err);
+        setError(`SDK 로드 실패: ${err.message}`);
+      });
+  }, [apiKey]);
 
   // 모바일 환경에서는 WebView 사용
   if (Platform.OS !== "web") {
@@ -373,6 +330,16 @@ export default function KakaoMap() {
       return (
         <View className="flex-1 items-center justify-center">
           <Text className="text-red-500">카카오맵 API 키가 설정되지 않았습니다.</Text>
+        </View>
+      );
+    }
+
+    // SDK 로딩 중
+    if (!kakaoSDK) {
+      return (
+        <View className="flex-1 items-center justify-center bg-gray-100">
+          <ActivityIndicator size="large" color="#FF3B30" />
+          <Text className="mt-4 text-gray-600">카카오맵 SDK 로딩 중...</Text>
         </View>
       );
     }
@@ -414,6 +381,7 @@ export default function KakaoMap() {
           source={{
             html: generateMapHTML(apiKey)
           }}
+          injectedJavaScriptBeforeContentLoaded={kakaoSDK}
           style={{ flex: 1 }}
           onLoadStart={() => {
             console.log('[WebView] Load started');
@@ -421,6 +389,7 @@ export default function KakaoMap() {
           }}
           onLoadEnd={() => {
             console.log('[WebView] Load ended');
+            console.log('[WebView] SDK injected, length:', kakaoSDK.length);
             setIsLoading(false);
           }}
           onMessage={handleWebViewMessage}
