@@ -43,7 +43,7 @@ const generateMapHTML = (apiKey: string) => {
 <body>
   <div id="debug">Initializing...</div>
   <div id="map"></div>
-  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false" referrerpolicy="no-referrer"></script>
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false" crossorigin="anonymous"></script>
   <script>
     (function() {
       var debugEl = document.getElementById('debug');
@@ -80,6 +80,9 @@ const generateMapHTML = (apiKey: string) => {
       log('Script started');
       log('ReactNativeWebView: ' + (window.ReactNativeWebView ? 'YES' : 'NO'));
       log('API Key: ${apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING'}');
+      log('Location: ' + window.location.href);
+      log('Origin: ' + (window.location.origin || 'N/A'));
+      log('Referrer: ' + (document.referrer || 'NONE'));
 
       setTimeout(function() {
         log('Checking Kakao SDK...');
@@ -96,14 +99,19 @@ const generateMapHTML = (apiKey: string) => {
 
         log('Kakao SDK OK, loading maps...');
 
-        // 타임아웃 설정 (10초)
+        // 타임아웃 설정 (15초로 증가)
         var loadTimeout = setTimeout(function() {
-          error('Maps load timeout - API key may not be authorized for this domain');
-        }, 10000);
+          error('Maps load timeout (15s). Possible causes:');
+          error('1. API key not authorized for domain: ' + (window.location.origin || window.location.href));
+          error('2. Network connectivity issue');
+          error('3. Kakao Maps server issue');
+          error('Check Kakao Console: https://developers.kakao.com');
+        }, 15000);
 
         window.kakao.maps.load(function() {
           clearTimeout(loadTimeout);
-          log('Maps loaded, creating map...');
+          log('Maps loaded successfully!');
+          log('Creating map...');
 
           try {
             var mapContainer = document.getElementById('map');
@@ -320,7 +328,7 @@ export default function KakaoMap() {
         <WebView
           source={{
             html: generateMapHTML(apiKey),
-            baseUrl: 'http://localhost/'
+            baseUrl: 'https://localhost/'
           }}
           style={{ flex: 1 }}
           onLoadStart={() => {

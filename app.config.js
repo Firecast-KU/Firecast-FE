@@ -23,7 +23,9 @@ module.exports = {
       package: "com.hyunju0411.FirecastFE",
       permissions: [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     web: {
@@ -32,6 +34,7 @@ module.exports = {
     },
     plugins: [
       "expo-router",
+      "expo-web-browser",
       [
         "expo-splash-screen",
         {
