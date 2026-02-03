@@ -32,6 +32,7 @@ const generateMapHTML = (apiKey: string) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -309,14 +310,17 @@ export default function KakaoMap() {
     return (
       <View className="flex-1">
         <WebView
-          source={{ html: generateMapHTML(apiKey) }}
+          source={{
+            html: generateMapHTML(apiKey),
+            baseUrl: Platform.OS === "android" ? "http://localhost/" : "",
+          }}
           style={{ flex: 1 }}
           onLoadStart={() => {
-            console.log('[WebView] Load started');
+            console.log("[WebView] Load started");
             setIsLoading(true);
           }}
           onLoadEnd={() => {
-            console.log('[WebView] Load ended');
+            console.log("[WebView] Load ended");
             setIsLoading(false);
           }}
           onMessage={handleWebViewMessage}
@@ -324,7 +328,7 @@ export default function KakaoMap() {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
-          originWhitelist={['*']}
+          originWhitelist={["*"]}
           mixedContentMode="always"
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
