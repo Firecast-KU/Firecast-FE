@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, ActivityIndicator, Text, Platform } from "react-native";
 import WebView from "react-native-webview";
+import * as Location from "expo-location";
 import {
   MOCK_FIRE_STATIONS,
   INITIAL_MAP_CENTER,
@@ -38,11 +39,55 @@ const generateMapHTML = (apiKey: string) => {
     html, body { width: 100%; height: 100%; overflow: hidden; }
     #map { width: 100%; height: 100%; }
     #debug { position: fixed; top: 10px; left: 10px; background: white; padding: 10px; z-index: 9999; font-size: 10px; max-width: 80%; }
+    #myLocationBtn {
+      position: fixed;
+      bottom: 24px;
+      right: 12px;
+      width: 44px;
+      height: 44px;
+      background: white;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    #myLocationBtn:hover {
+      background: #f5f5f5;
+    }
+    #myLocationBtn:active {
+      transform: scale(0.95);
+      background: #ebebeb;
+    }
+    #myLocationBtn.loading {
+      pointer-events: none;
+    }
+    #myLocationBtn.loading svg {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <div id="debug">Initializing...</div>
   <div id="map"></div>
+  <button id="myLocationBtn" title="현재 위치">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="3" fill="#3B82F6"/>
+      <circle cx="12" cy="12" r="8" stroke="#3B82F6" stroke-width="2" fill="none"/>
+      <line x1="12" y1="2" x2="12" y2="5" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="19" x2="12" y2="22" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+      <line x1="2" y1="12" x2="5" y2="12" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+      <line x1="19" y1="12" x2="22" y2="12" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
   <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false"></script>
   <script>
     (function() {
@@ -112,11 +157,39 @@ const generateMapHTML = (apiKey: string) => {
             var zoomControl = new kakao.maps.ZoomControl();
             map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
 
+            // 사용자 위치 기반으로 지도 중심 이동
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                function(position) {
+                  var userLat = position.coords.latitude;
+                  var userLng = position.coords.longitude;
+
+                  // 지도 중심을 사용자 위치보다 북동쪽으로 이동
+                  const offsetLat = userLat + 0.003; // 북쪽으로 이동
+                  const offsetLng = userLng + 0.0067;  // 동쪽으로 이동
+                  var centerPosition = new kakao.maps.LatLng(offsetLat, offsetLng);
+
+                  // 사용자 위치로 지도 중심 이동 및 확대
+                  map.setCenter(centerPosition);
+                  map.setLevel(4); // 더 확대된 상태로 표시 (1~14, 숫자가 작을수록 확대)
+
+                  log('User location: ' + userLat + ', ' + userLng);
+                },
+                function(err) {
+                  log('Geolocation failed: ' + err.message);
+                  // 위치 권한 거부 시 기본 위치 유지
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+              );
+            }
+
             // 마커 데이터
             var markers = ${markersJson};
             var riskLabels = ${riskLabelsJson};
             var overlays = [];
             var clickOverlay = null;
+            var userLocationOverlay = null;
+            var userLocationMarker = null;
             var isMarkerClicked = false; // 마커 클릭 플래그 (이벤트 버블링 방지)
 
             // 모든 오버레이를 닫는 통합 함수
@@ -125,6 +198,10 @@ const generateMapHTML = (apiKey: string) => {
               if (clickOverlay) {
                 clickOverlay.setMap(null);
                 clickOverlay = null;
+              }
+              if (userLocationOverlay) {
+                userLocationOverlay.setMap(null);
+                userLocationOverlay = null;
               }
             }
 
@@ -264,6 +341,135 @@ const generateMapHTML = (apiKey: string) => {
               closeAllOverlays();
             });
 
+            // React Native에서 위치 메시지 수신
+            window.setUserLocation = function(lat, lng) {
+              log('Setting user location from RN: ' + lat + ', ' + lng);
+              var offsetLat = lat + 0.002;
+              var offsetLng = lng + 0.0027;
+              var centerPosition = new kakao.maps.LatLng(offsetLat, offsetLng);
+              map.setCenter(centerPosition);
+              map.setLevel(4);
+
+              // 사용자 위치 마커 생성/업데이트
+              var userPosition = new kakao.maps.LatLng(lat, lng);
+
+              if (userLocationMarker) {
+                // 기존 마커 위치 업데이트
+                userLocationMarker.setPosition(userPosition);
+              } else {
+                // 새 마커 생성 (파란색 점 + 펄스 효과)
+                var markerContent = document.createElement('div');
+                markerContent.innerHTML =
+                  '<div style="position: relative; width: 24px; height: 24px;">' +
+                  '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: rgba(59, 130, 246, 0.2); border-radius: 50%; animation: locationPulse 2s ease-out infinite;"></div>' +
+                  '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>' +
+                  '</div>' +
+                  '<style>' +
+                  '@keyframes locationPulse {' +
+                  '  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }' +
+                  '  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }' +
+                  '}' +
+                  '</style>';
+
+                userLocationMarker = new kakao.maps.CustomOverlay({
+                  position: userPosition,
+                  content: markerContent,
+                  yAnchor: 0.5,
+                  xAnchor: 0.5
+                });
+                userLocationMarker.setMap(map);
+              }
+
+              // 가장 가까운 관측소 찾기
+              var nearest = findNearestStation(lat, lng);
+
+              if (nearest) {
+                // 기존 사용자 위치 오버레이 제거
+                if (userLocationOverlay) {
+                  userLocationOverlay.setMap(null);
+                }
+
+                // 사용자 위치에 오버레이 표시
+                var userPosition = new kakao.maps.LatLng(lat, lng);
+                var userContent = document.createElement('div');
+                userContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 5px));';
+                userContent.innerHTML =
+                  '<div style="padding: 16px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 200px; font-family: sans-serif;">' +
+                  '<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">' +
+                  '<div style="width: 8px; height: 8px; background: #3B82F6; border-radius: 50%; animation: pulse 2s infinite;"></div>' +
+                  '현재 위치 기준</div>' +
+                  '<div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">' + nearest.location + '</div>' +
+                  '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px;">' +
+                  '<div style="width: 8px; height: 8px; border-radius: 50%; background: ' + nearest.color + ';"></div>' +
+                  '<span style="font-size: 14px; font-weight: 500; color: ' + nearest.color + ';">' + riskLabels[nearest.risk] + '</span></div>' +
+                  '<div style="padding: 12px; background: linear-gradient(135deg, ' + nearest.color + '15 0%, ' + nearest.color + '05 100%); border-radius: 8px;">' +
+                  '<div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">산불 발생 확률</div>' +
+                  '<div style="font-size: 24px; font-weight: 700; color: ' + nearest.color + ';">' + nearest.probability.toFixed(1) + '%</div></div></div>' +
+                  '<style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }</style>';
+
+                userLocationOverlay = new kakao.maps.CustomOverlay({
+                  position: userPosition,
+                  content: userContent,
+                  yAnchor: 1
+                });
+
+                userLocationOverlay.setMap(map);
+                log('User location overlay displayed');
+              }
+            };
+
+            // 메시지 리스너 등록
+            document.addEventListener('message', function(e) {
+              try {
+                var data = JSON.parse(e.data);
+                if (data.type === 'setUserLocation') {
+                  window.setUserLocation(data.latitude, data.longitude);
+                }
+              } catch (err) {
+                log('Message parse error: ' + err.message);
+              }
+            });
+
+            // iOS용 메시지 리스너
+            window.addEventListener('message', function(e) {
+              try {
+                var data = JSON.parse(e.data);
+                if (data.type === 'setUserLocation') {
+                  window.setUserLocation(data.latitude, data.longitude);
+                }
+              } catch (err) {
+                log('Message parse error: ' + err.message);
+              }
+            });
+
+            // 지도 준비 완료 알림
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
+            }
+
+            // 현위치 버튼 클릭 이벤트
+            var myLocationBtn = document.getElementById('myLocationBtn');
+            myLocationBtn.addEventListener('click', function() {
+              myLocationBtn.classList.add('loading');
+
+              // React Native에 위치 요청
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'requestLocation' }));
+              }
+
+              // 3초 후 로딩 상태 해제 (타임아웃)
+              setTimeout(function() {
+                myLocationBtn.classList.remove('loading');
+              }, 3000);
+            });
+
+            // 위치 수신 시 로딩 상태 해제
+            var originalSetUserLocation = window.setUserLocation;
+            window.setUserLocation = function(lat, lng) {
+              myLocationBtn.classList.remove('loading');
+              originalSetUserLocation(lat, lng);
+            };
+
             log('All markers added!');
             setTimeout(function() {
               debugEl.style.display = 'none';
@@ -282,10 +488,44 @@ const generateMapHTML = (apiKey: string) => {
 
 export default function KakaoMap() {
   const mapContainerRef = useRef<any>(null);
+  const webViewRef = useRef<WebView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const apiKey = process.env.EXPO_PUBLIC_KAKAO_MAP_KEY;
+
+  // 모바일에서 위치 권한 요청 및 위치 전달
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      (async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== "granted") {
+            console.log("[Location] Permission denied");
+            return;
+          }
+
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+
+          console.log("[Location] Got location:", location.coords.latitude, location.coords.longitude);
+
+          // WebView가 로드된 후 위치 전달
+          if (webViewRef.current) {
+            const message = JSON.stringify({
+              type: "setUserLocation",
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+            webViewRef.current.postMessage(message);
+          }
+        } catch (err) {
+          console.log("[Location] Error:", err);
+        }
+      })();
+    }
+  }, [isLoading]); // isLoading이 false가 될 때(WebView 로드 완료) 위치 전달
 
   // 모바일 환경에서는 WebView 사용
   if (Platform.OS !== "web") {
@@ -310,6 +550,54 @@ export default function KakaoMap() {
           setIsLoading(false);
         } else if (data.type === 'log') {
           console.log('[WebView Log]', data.message);
+        } else if (data.type === 'mapReady') {
+          console.log('[WebView] Map is ready, sending location...');
+          // 지도가 준비되면 위치 다시 전달 시도
+          (async () => {
+            try {
+              const { status } = await Location.getForegroundPermissionsAsync();
+              if (status === "granted") {
+                const location = await Location.getCurrentPositionAsync({
+                  accuracy: Location.Accuracy.High,
+                });
+                if (webViewRef.current) {
+                  const message = JSON.stringify({
+                    type: "setUserLocation",
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                  });
+                  webViewRef.current.postMessage(message);
+                }
+              }
+            } catch (err) {
+              console.log("[Location] Error on mapReady:", err);
+            }
+          })();
+        } else if (data.type === 'requestLocation') {
+          console.log('[WebView] Location requested from button');
+          // 현위치 버튼 클릭 시 위치 다시 가져오기
+          (async () => {
+            try {
+              const { status } = await Location.requestForegroundPermissionsAsync();
+              if (status === "granted") {
+                const location = await Location.getCurrentPositionAsync({
+                  accuracy: Location.Accuracy.High,
+                });
+                if (webViewRef.current) {
+                  const message = JSON.stringify({
+                    type: "setUserLocation",
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                  });
+                  webViewRef.current.postMessage(message);
+                }
+              } else {
+                console.log("[Location] Permission denied");
+              }
+            } catch (err) {
+              console.log("[Location] Error on requestLocation:", err);
+            }
+          })();
         }
       } catch (e) {
         console.error('[WebView] Message parsing error:', e);
@@ -335,9 +623,10 @@ export default function KakaoMap() {
     return (
       <View className="flex-1">
         <WebView
+          ref={webViewRef}
           source={{
             html: generateMapHTML(apiKey),
-            baseUrl: Platform.OS === "android" ? "http://localhost/" : "",
+            baseUrl: Platform.OS === "android" ? "https://localhost/" : "",
           }}
           style={{ flex: 1 }}
           onLoadStart={() => {
@@ -357,6 +646,7 @@ export default function KakaoMap() {
           mixedContentMode="always"
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
+          geolocationEnabled={true}
           renderLoading={() => (
             <View className="flex-1 items-center justify-center bg-gray-100">
               <ActivityIndicator size="large" color="#FF3B30" />
@@ -413,8 +703,41 @@ export default function KakaoMap() {
       const zoomControl = new window.kakao.maps.ZoomControl();
       map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
 
+      // 사용자 위치 기반으로 지도 중심 이동 (마커, 오버레이 설정 후 실행되도록 setTimeout 사용)
+      setTimeout(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+
+              // 지도 중심을 사용자 위치보다 북동쪽으로 이동
+              const offsetLat = userLat + 0.003; // 북쪽으로 이동
+              const offsetLng = userLng + 0.0067;  // 동쪽으로 이동
+              const centerPosition = new window.kakao.maps.LatLng(offsetLat, offsetLng);
+
+              // 사용자 위치로 지도 중심 이동 및 확대
+              map.setCenter(centerPosition);
+              map.setLevel(4); // 더 확대된 상태로 표시 (1~14, 숫자가 작을수록 확대)
+
+              // 사용자 위치에 위험도 오버레이 표시
+              showUserLocationOverlay(userLat, userLng);
+
+              console.log('User location:', userLat, userLng);
+            },
+            (err) => {
+              console.log('Geolocation failed:', err.message);
+              // 위치 권한 거부 시 기본 위치 유지
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
+        }
+      }, 100);
+
       const overlays: any[] = [];
       let clickOverlay: any = null;
+      let userLocationOverlay: any = null;
+      let userLocationMarker: any = null;
       let isMarkerClicked = false; // 마커 클릭 플래그 (이벤트 버블링 방지)
 
       // 모든 오버레이를 닫는 통합 함수
@@ -423,6 +746,158 @@ export default function KakaoMap() {
         if (clickOverlay) {
           clickOverlay.setMap(null);
           clickOverlay = null;
+        }
+        if (userLocationOverlay) {
+          userLocationOverlay.setMap(null);
+          userLocationOverlay = null;
+        }
+      };
+
+      // 거리 계산 함수 (Haversine formula)
+      const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371; // 지구 반경 (km)
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      };
+
+      // 가장 가까운 관측소 찾기
+      const findNearestStation = (lat: number, lng: number) => {
+        let nearest = MOCK_FIRE_STATIONS[0];
+        let minDistance = Infinity;
+
+        MOCK_FIRE_STATIONS.forEach((station) => {
+          const distance = getDistance(lat, lng, station.latitude, station.longitude);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearest = station;
+          }
+        });
+
+        return nearest;
+      };
+
+      // 사용자 위치에 위험도 오버레이 표시
+      const showUserLocationOverlay = (userLat: number, userLng: number) => {
+        const nearest = findNearestStation(userLat, userLng);
+        const userPosition = new window.kakao.maps.LatLng(userLat, userLng);
+
+        // 사용자 위치 마커 생성/업데이트 (파란색 점)
+        if (userLocationMarker) {
+          userLocationMarker.setPosition(userPosition);
+        } else {
+          const markerContent = document.createElement('div');
+          markerContent.innerHTML = `
+            <div style="position: relative; width: 24px; height: 24px;">
+              <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 24px;
+                height: 24px;
+                background: rgba(59, 130, 246, 0.2);
+                border-radius: 50%;
+                animation: locationPulse 2s ease-out infinite;
+              "></div>
+              <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 14px;
+                height: 14px;
+                background: #3B82F6;
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              "></div>
+            </div>
+            <style>
+              @keyframes locationPulse {
+                0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+              }
+            </style>
+          `;
+
+          userLocationMarker = new window.kakao.maps.CustomOverlay({
+            position: userPosition,
+            content: markerContent,
+            yAnchor: 0.5,
+            xAnchor: 0.5
+          });
+          userLocationMarker.setMap(map);
+        }
+
+        if (nearest) {
+          // 기존 사용자 위치 오버레이 제거
+          if (userLocationOverlay) {
+            userLocationOverlay.setMap(null);
+          }
+
+          const hexColor = COLOR_CODE_TO_HEX[nearest.color];
+          const riskLevel = COLOR_CODE_TO_RISK[nearest.color];
+
+          const userContent = document.createElement('div');
+          userContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 5px));';
+          userContent.innerHTML = `
+            <div style="
+              padding: 16px;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+              min-width: 200px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            ">
+              <div style="
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6b7280;
+                margin-bottom: 8px;
+              ">
+                <div style="
+                  width: 8px;
+                  height: 8px;
+                  background: #3B82F6;
+                  border-radius: 50%;
+                  animation: pulse 2s infinite;
+                "></div>
+                현재 위치 기준
+              </div>
+              <div style="font-size: 16px; font-weight: 600; color: #030213; margin-bottom: 12px;">${nearest.location}</div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${hexColor};"></div>
+                <span style="font-size: 14px; font-weight: 500; color: ${hexColor};">${RISK_LABELS[riskLevel]}</span>
+              </div>
+              <div style="padding: 12px; background: linear-gradient(135deg, ${hexColor}15 0%, ${hexColor}05 100%); border-radius: 8px;">
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">산불 발생 확률</div>
+                <div style="font-size: 24px; font-weight: 700; color: ${hexColor};">${nearest.probability.toFixed(1)}%</div>
+              </div>
+            </div>
+            <style>
+              @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+              }
+            </style>
+          `;
+
+          userLocationOverlay = new window.kakao.maps.CustomOverlay({
+            position: userPosition,
+            content: userContent,
+            yAnchor: 1
+          });
+
+          userLocationOverlay.setMap(map);
+          console.log('User location overlay displayed');
         }
       };
 
@@ -536,34 +1011,6 @@ export default function KakaoMap() {
         });
       });
 
-      // 거리 계산 함수 (Haversine formula)
-      const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-        const R = 6371; // 지구 반경 (km)
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-      };
-
-      // 가장 가까운 관측소 찾기
-      const findNearestStation = (lat: number, lng: number) => {
-        let nearest = MOCK_FIRE_STATIONS[0];
-        let minDistance = Infinity;
-
-        MOCK_FIRE_STATIONS.forEach((station) => {
-          const distance = getDistance(lat, lng, station.latitude, station.longitude);
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearest = station;
-          }
-        });
-
-        return nearest;
-      };
-
       // 지도 클릭 이벤트 - 가장 가까운 관측소 정보 표시
       window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
         // 마커 클릭 직후라면 지도 클릭 이벤트 무시 (이벤트 버블링 방지)
@@ -624,6 +1071,96 @@ export default function KakaoMap() {
       window.kakao.maps.event.addListener(map, "zoom_changed", () => {
         closeAllOverlays();
       });
+
+      // 현위치 버튼 생성 (웹용)
+      const myLocationBtn = document.createElement('button');
+      myLocationBtn.id = 'myLocationBtn';
+      myLocationBtn.title = '현재 위치';
+      myLocationBtn.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="3" fill="#3B82F6"/>
+          <circle cx="12" cy="12" r="8" stroke="#3B82F6" stroke-width="2" fill="none"/>
+          <line x1="12" y1="2" x2="12" y2="5" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+          <line x1="12" y1="19" x2="12" y2="22" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+          <line x1="2" y1="12" x2="5" y2="12" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+          <line x1="19" y1="12" x2="22" y2="12" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      `;
+      myLocationBtn.style.cssText = `
+        position: absolute;
+        bottom: 24px;
+        right: 12px;
+        width: 44px;
+        height: 44px;
+        background: white;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        cursor: pointer;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      `;
+
+      myLocationBtn.addEventListener('mouseenter', () => {
+        myLocationBtn.style.background = '#f5f5f5';
+      });
+      myLocationBtn.addEventListener('mouseleave', () => {
+        myLocationBtn.style.background = 'white';
+      });
+
+      myLocationBtn.addEventListener('click', () => {
+        // 로딩 상태 표시
+        const svg = myLocationBtn.querySelector('svg');
+        if (svg) {
+          svg.style.animation = 'spin 1s linear infinite';
+        }
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+
+              // 지도 중심 이동 및 확대
+              const offsetLat = userLat + 0.003;
+              const offsetLng = userLng + 0.0067;
+              const centerPosition = new window.kakao.maps.LatLng(offsetLat, offsetLng);
+              map.setCenter(centerPosition);
+              map.setLevel(4);
+
+              // 사용자 위치에 위험도 오버레이 표시
+              showUserLocationOverlay(userLat, userLng);
+
+              // 로딩 상태 해제
+              if (svg) {
+                svg.style.animation = '';
+              }
+            },
+            (err) => {
+              console.log('Geolocation failed:', err.message);
+              if (svg) {
+                svg.style.animation = '';
+              }
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
+        }
+      });
+
+      // 스핀 애니메이션 스타일 추가
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      mapContainerRef.current?.appendChild(myLocationBtn);
 
       setIsLoading(false);
     } catch (err) {
