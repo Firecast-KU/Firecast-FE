@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(npx expo install:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(xargs cat:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

@@ -116,6 +116,17 @@ const generateMapHTML = (apiKey: string) => {
             var markers = ${markersJson};
             var riskLabels = ${riskLabelsJson};
             var overlays = [];
+            var clickOverlay = null;
+            var isMarkerClicked = false; // 마커 클릭 플래그 (이벤트 버블링 방지)
+
+            // 모든 오버레이를 닫는 통합 함수
+            function closeAllOverlays() {
+              overlays.forEach(function(overlay) { overlay.setMap(null); });
+              if (clickOverlay) {
+                clickOverlay.setMap(null);
+                clickOverlay = null;
+              }
+            }
 
             log('Adding ' + markers.length + ' markers...');
 
@@ -162,8 +173,19 @@ const generateMapHTML = (apiKey: string) => {
               overlays.push(customOverlay);
 
               kakao.maps.event.addListener(marker, "click", function() {
-                overlays.forEach(function(overlay) { overlay.setMap(null); });
+                // 마커 클릭 플래그 설정 (지도 클릭 이벤트 무시하기 위함)
+                isMarkerClicked = true;
+
+                // 모든 오버레이 닫기 (마커 오버레이 + 클릭 오버레이)
+                closeAllOverlays();
+
+                // 해당 마커의 오버레이만 표시
                 customOverlay.setMap(map);
+
+                // 플래그 리셋 (다음 프레임에서)
+                setTimeout(function() {
+                  isMarkerClicked = false;
+                }, 0);
               });
             });
 
@@ -196,11 +218,14 @@ const generateMapHTML = (apiKey: string) => {
             }
 
             // 지도 클릭 이벤트 - 가장 가까운 관측소 정보 표시
-            var clickOverlay = null;
-
             kakao.maps.event.addListener(map, "click", function(mouseEvent) {
-              // 기존 마커 오버레이 모두 닫기
-              overlays.forEach(function(overlay) { overlay.setMap(null); });
+              // 마커 클릭 직후라면 지도 클릭 이벤트 무시 (이벤트 버블링 방지)
+              if (isMarkerClicked) {
+                return;
+              }
+
+              // 모든 오버레이 닫기
+              closeAllOverlays();
 
               // 클릭 위치
               var latlng = mouseEvent.latLng;
@@ -211,11 +236,6 @@ const generateMapHTML = (apiKey: string) => {
               var nearest = findNearestStation(clickLat, clickLng);
 
               if (nearest) {
-                // 기존 클릭 오버레이 제거
-                if (clickOverlay) {
-                  clickOverlay.setMap(null);
-                }
-
                 // 클릭한 위치에 오버레이 표시
                 var clickContent = document.createElement('div');
                 clickContent.style.cssText = 'position: absolute; left: 50%; transform: translate(-50%, -100%);';
@@ -389,6 +409,17 @@ export default function KakaoMap() {
       map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
 
       const overlays: any[] = [];
+      let clickOverlay: any = null;
+      let isMarkerClicked = false; // 마커 클릭 플래그 (이벤트 버블링 방지)
+
+      // 모든 오버레이를 닫는 통합 함수
+      const closeAllOverlays = () => {
+        overlays.forEach(overlay => overlay.setMap(null));
+        if (clickOverlay) {
+          clickOverlay.setMap(null);
+          clickOverlay = null;
+        }
+      };
 
       MOCK_FIRE_STATIONS.forEach((station) => {
         const markerPosition = new window.kakao.maps.LatLng(
@@ -484,8 +515,19 @@ export default function KakaoMap() {
         overlays.push(customOverlay);
 
         window.kakao.maps.event.addListener(marker, "click", () => {
-          overlays.forEach(overlay => overlay.setMap(null));
+          // 마커 클릭 플래그 설정 (지도 클릭 이벤트 무시하기 위함)
+          isMarkerClicked = true;
+
+          // 모든 오버레이 닫기 (마커 오버레이 + 클릭 오버레이)
+          closeAllOverlays();
+
+          // 해당 마커의 오버레이만 표시
           customOverlay.setMap(map);
+
+          // 플래그 리셋 (다음 프레임에서)
+          setTimeout(() => {
+            isMarkerClicked = false;
+          }, 0);
         });
       });
 
@@ -518,11 +560,14 @@ export default function KakaoMap() {
       };
 
       // 지도 클릭 이벤트 - 가장 가까운 관측소 정보 표시
-      let clickOverlay: any = null;
-
       window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
-        // 기존 마커 오버레이 모두 닫기
-        overlays.forEach(overlay => overlay.setMap(null));
+        // 마커 클릭 직후라면 지도 클릭 이벤트 무시 (이벤트 버블링 방지)
+        if (isMarkerClicked) {
+          return;
+        }
+
+        // 모든 오버레이 닫기
+        closeAllOverlays();
 
         // 클릭 위치
         const latlng = mouseEvent.latLng;
@@ -533,11 +578,6 @@ export default function KakaoMap() {
         const nearest = findNearestStation(clickLat, clickLng);
 
         if (nearest) {
-          // 기존 클릭 오버레이 제거
-          if (clickOverlay) {
-            clickOverlay.setMap(null);
-          }
-
           const hexColor = COLOR_CODE_TO_HEX[nearest.color];
           const riskLevel = COLOR_CODE_TO_RISK[nearest.color];
 
