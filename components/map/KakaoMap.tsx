@@ -259,6 +259,11 @@ const generateMapHTML = (apiKey: string) => {
               }
             });
 
+            // 줌 변경 시 모든 오버레이 닫기
+            kakao.maps.event.addListener(map, "zoom_changed", function() {
+              closeAllOverlays();
+            });
+
             log('All markers added!');
             setTimeout(function() {
               debugEl.style.display = 'none';
@@ -613,6 +618,11 @@ export default function KakaoMap() {
 
           clickOverlay.setMap(map);
         }
+      });
+
+      // 줌 변경 시 모든 오버레이 닫기
+      window.kakao.maps.event.addListener(map, "zoom_changed", () => {
+        closeAllOverlays();
       });
 
       setIsLoading(false);
