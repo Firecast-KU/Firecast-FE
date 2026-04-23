@@ -5,7 +5,8 @@
       "Bash(npx expo install:*)",
       "Bash(npm install:*)",
       "Bash(xargs cat:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git -C \"C:\\\\Users\\\\USER\\\\Desktop\\\\Firecast-FE\" log --oneline)"
     ],
     "deny": [],
     "ask": []
